@@ -28,7 +28,7 @@ conda activate snakemake
 conda install -c conda-forge graphviz
 ```
 
-Then, simply go to the folder of database of your choice (*e.g.* SILVA) and smiply use the commands below to,
+Then, simply go to the folder for the database of your choice (*e.g.* SILVA) and smiply use the commands below to,
 
 **Dry Run**
 
