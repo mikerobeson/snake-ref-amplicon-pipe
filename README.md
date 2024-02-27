@@ -43,7 +43,7 @@ snakemake --snakefile Snakefile --dag all | dot -Tpng > silva-dag.png
 ```
 
 **Run pipeline**
-You can add the flag `-n` to performa a "dry run"). That is, just provide a description of what will be run. Add the flag `-F` to force rerun and regenrate output.
+You can add the flag `-n` to performa a "dry run". That is, just provide a description of what will be run. Add the flag `-F` to force rerun and regenrate output.
 
 ```
 snakemake -c 8 --use-conda  all -p
