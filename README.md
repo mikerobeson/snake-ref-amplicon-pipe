@@ -25,7 +25,7 @@ conda create -c conda-forge -c bioconda -n snakemake snakemake
 
 conda activate snakemake
 
-conca install -c conda-forge graphviz
+conda install -c conda-forge graphviz
 ```
 
 Then, simply go to the folder of database of your choice (*e.g.* SILVA) and smiply use the commands below to,
