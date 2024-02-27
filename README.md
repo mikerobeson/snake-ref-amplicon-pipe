@@ -30,7 +30,7 @@ conda install -c conda-forge graphviz
 
 Then, simply go to the folder for the database of your choice (*e.g.* SILVA) and smiply use the commands below to,
 
-**Dry Run**
+**Run**
 
 ```
 cd Pipelines/SILVA/workflow
