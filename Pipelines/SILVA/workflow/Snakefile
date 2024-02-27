@@ -1,0 +1,215 @@
+from snakemake.io import glob_wildcards, expand
+
+# grab user settings and define variables
+configfile: "../config/config.yaml"
+workdir: config["outdir"]
+Q2CONDA = config["q2env"]
+PRIMERS = config["primers"]
+FORMAT = ["seqs", "tax"]
+# Variables below, allow us to contsrain "amplicon extraction"
+# to only those file names with variable regions as defined
+# in PRIMERS, i.e. ignore '-fl-'
+VREGION = list(PRIMERS.keys())
+VREGION_CONSTRAINT = "|".join(VREGION)
+# append 'fl' to ref_type as we want to write the full-length
+# data to it's own folder, along with variable regions to their
+# own folder.
+REF_TYPE = VREGION + ["fl"]
+
+rule all:
+    input:
+        "fl/silva-fl-rnaseqs.qza",
+        "fl/silva-fl-tax.qza",
+        expand("{ref_type}/silva-{ref_type}-seqs.qza", 
+                ref_type = REF_TYPE),
+        expand("{ref_type}/silva-{ref_type}-seqs-culled.qza", 
+                ref_type = REF_TYPE),
+        expand("{ref_type}/silva-{ref_type}-{format}-culled-derep.qza", 
+                ref_type = REF_TYPE, format=FORMAT),
+        expand("{ref_type}/silva-{ref_type}-classifier.qza", 
+               ref_type = REF_TYPE),
+
+include:
+    "rules/common.smk"
+
+## get silva data
+rule get_silva:
+    conda: 
+        Q2CONDA
+    params:
+        version = config["silva_opt"]["version"],
+        target = config["silva_opt"]["target"],
+        ranks = config["silva_opt"]["ranks"],
+    output:
+        # seqs = "fl/silva-fl-rnaseqs.qza",
+	    # tax = "fl/silva-fl-tax.qza"
+        seqs = "fl/silva-fl-rnaseqs.qza",
+	    tax = "fl/silva-fl-tax.qza"
+    log:
+        out = "logs/downloads-log.out",
+        err = "logs/downloads-log.err"
+    shell: 
+        """
+        qiime rescript get-silva-data \
+            --p-version {params.version} \
+            --p-target {params.target} \
+            --p-ranks {params.ranks} \
+            --p-rank-propagation \
+            --o-silva-sequences {output.seqs} \
+            --o-silva-taxonomy {output.tax} \
+            --verbose 2> {log.err} 1> {log.out}
+        """
+
+rule reverse_transcribe:
+    conda:
+         Q2CONDA
+    input:
+        rna_seqs = rules.get_silva.output.seqs
+        #rna_seqs = "fl/silva-fl-rnaseqs.qza"
+    output:
+        seqs = "fl/silva-fl-seqs.qza"
+    log:
+        out = "logs/reverse-transcribe-log.out",
+        err = "logs/reverse-transcribe-log.err"
+    shell:
+        """
+        qiime rescript reverse-transcribe \
+            --i-rna-sequences {input.rna_seqs} \
+            --o-dna-sequences {output.seqs} \
+            --verbose 2> {log.err} 1> {log.out}
+        """
+
+rule extract_amplicon_region:
+    wildcard_constraints:
+        ref_type = VREGION_CONSTRAINT
+    conda: 
+        Q2CONDA 
+    input:
+        seqs = rules.reverse_transcribe.output.seqs,
+    params:
+        f_primer = get_fw_primer,
+        r_primer = get_rev_primer,
+        orientation = "forward"
+    threads: 
+        2
+    output:
+        extracted_seqs = "{ref_type}/silva-{ref_type}-seqs.qza"
+    log:
+        out = "logs/extract-amp-{ref_type}-log.out",
+        err = "logs/extract-amp-{ref_type}-log.err"
+    shell:
+        """
+        qiime feature-classifier extract-reads \
+            --i-sequences {input.seqs} \
+	        --p-f-primer {params.f_primer} \
+	        --p-r-primer {params.r_primer} \
+	        --p-n-jobs {threads} \
+	        --p-read-orientation {params.orientation} \
+	        --o-reads {output.extracted_seqs} \
+            --verbose 2> {log.err} 1> {log.out}
+        """
+
+# remove poor quality sequences
+rule cull_seqs:
+    conda: 
+        Q2CONDA
+    input:
+        seqs = "{ref_type}/silva-{ref_type}-seqs.qza",
+    output:
+        seqs = "{ref_type}/silva-{ref_type}-seqs-culled.qza"
+    params:
+        ndegen = "5",
+        hpoly = "8"
+    threads:
+        2
+    log:
+        out = "logs/cull-seqs-{ref_type}-log.out",
+        err = "logs/cull-seqs-{ref_type}-log.err"
+    shell:
+        """
+        qiime rescript cull-seqs \
+            --i-sequences {input.seqs} \
+            --p-num-degenerates {params.ndegen} \
+            --p-homopolymer-length {params.hpoly} \
+            --p-n-jobs {threads} \
+            --o-clean-sequences {output.seqs} \
+            --verbose 2> {log.err} 1> {log.out}
+        """
+
+# filter by length and taxon for full length
+rule filter_seq_by_len_and_tax:
+    conda:
+        Q2CONDA
+    input:
+        seqs = "{ref_type}/silva-fl-seqs-culled.qza",
+	    tax =  "{ref_type}/silva-tax.qza"
+    params:
+        mode = 'uniq',
+    threads:
+        2
+    output:
+        filt_seqs = "{ref_type}/silva-fl-flt-seqs-culled.qza",
+	    disc_seqs = "{ref_type}/silva-fl-flt-seqs-disc-culled.qza"
+    log:
+        out = "logs/filt-seq-len-tax-{ref_type}-log.out",
+        err = "logs/cull-seq-len-tax-{ref_type}-log.err"
+    shell:
+        """
+        qiime rescript filter-seqs-length-by-taxon \
+            --i-sequences {input.seqs} \
+            --i-taxonomy {input.tax} \
+            --p-labels Archaea Bacteria Eukaryota \
+            --p-min-lens 900 1200 1400 \
+            --o-filtered-seqs {output.filt_seqs} \
+            --o-discarded-seqs {output.disc_seqs} \
+            --verbose 2> {log.err} 1> {log.out}
+        """
+
+# derep
+rule derep:
+    conda: 
+        Q2CONDA
+    input:
+        seqs = "{ref_type}/silva-{ref_type}-seqs-culled.qza",
+	    tax =  "fl/silva-fl-tax.qza"
+    params:
+        mode = 'uniq',
+    threads:
+        2
+    output:
+        derep_seqs = "{ref_type}/silva-{ref_type}-seqs-culled-derep.qza",
+	    derep_tax = "{ref_type}/silva-{ref_type}-tax-culled-derep.qza"
+    log:
+        out = "logs/derep-{ref_type}-log.out",
+        err = "logs/derep-{ref_type}-log.err"
+    shell:
+        """
+        qiime rescript dereplicate \
+            --i-sequences {input.seqs} \
+            --i-taxa {input.tax} \
+            --p-mode {params.mode} \
+	        --p-threads {threads} \
+            --o-dereplicated-sequences {output.derep_seqs} \
+            --o-dereplicated-taxa {output.derep_tax}
+        """
+
+# train
+rule fl_train:
+    conda:
+        Q2CONDA
+    input:
+        seqs = "{ref_type}/silva-{ref_type}-seqs-culled-derep.qza",
+	    tax = "{ref_type}/silva-{ref_type}-tax-culled-derep.qza"
+    output:
+        classifier = "{ref_type}/silva-{ref_type}-classifier.qza"
+    log:
+        out = "logs/train-classifier-{ref_type}-log.out",
+        err = "logs/train-classifier-{ref_type}-log.err"
+    shell:
+        """
+	    qiime feature-classifier fit-classifier-naive-bayes \
+            --i-reference-reads {input.seqs} \
+            --i-reference-taxonomy {input.tax} \
+            --o-classifier {output.classifier} \
+            --verbose 2> {log.err} 1> {log.out}
+	    """

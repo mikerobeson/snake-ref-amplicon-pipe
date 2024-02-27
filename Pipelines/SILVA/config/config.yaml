@@ -1,0 +1,33 @@
+# QIIME 2
+# Get full file from from https://qiime2.org/
+q2env: "envs/qiime2-amplicon-2024.2-py38-osx-conda.yml"
+
+# SILVA params
+silva_opt:
+    version: "138.1"
+    target: "SSURef_NR99"
+    ranks: "domain phylum class order family genus"
+
+# Primers
+primers:
+    'v1v3':
+        'fw': 'AGAGTTTGATYMTGGCTCAG'
+        'rev': 'GCTGCCTCCCGTAGGAGT'
+    'v3v4':
+        'fw': 'GTGYCAGCMGCCGCGGTAA'
+        'rev': 'GGACTACNVGGGTWTCTAAT'
+    'v4':
+        'fw': 'CCTACGGGNGGCWGCAG'
+        'rev': 'GACTACHVGGGTATCTAATCC'
+    'v4v5':
+        'fw' : 'GTGYCAGCMGCCGCGGTAA'
+        'rev' : 'CCGYCAATTYMTTTRAGTTT'
+    'v6v8':
+        'fw': 'GAATTGACGGGGGCCCGCACAAG'
+        'rev': 'CGGTGTGTACAAGGCCCGGGAACG'
+    'v7v9':
+        'fw': 'CAACGAGCGCAACCCT'
+        'rev': 'TACGGYTACCTTGTTACGACTT'
+
+# output directory
+outdir: 'results'

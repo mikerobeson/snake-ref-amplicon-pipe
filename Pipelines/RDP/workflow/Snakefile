@@ -1,0 +1,177 @@
+# make rdp classifier
+
+from snakemake.io import glob_wildcards, expand
+
+# grab user settings and define variables
+configfile: "../config/config.yaml"
+workdir: config["outdir"]
+Q2CONDA = config["q2env"]
+PRIMERS = config["primers"]
+FORMAT = ["seqs", "tax"]
+# Variables below, allow us to contsrain "amplicon extraction"
+# to only those file names with variable regions as defined
+# in PRIMERS, i.e. ignore '-fl-'
+VREGION = list(PRIMERS.keys())
+VREGION_CONSTRAINT = "|".join(VREGION)
+# append 'fl' to ref_type as we want to write the full-length
+# data to it's own folder, along with variable regions to their
+# own folders.
+REF_TYPE = VREGION + ["fl"]
+
+
+rule all:
+    input:
+        # "fl/rdp-fl-seqs.qza",
+        # "fl/rdp-fl-tax.qza", 
+        expand("{ref_type}/rdp-{ref_type}-seqs.qza", ref_type = REF_TYPE),
+        expand("{ref_type}/rdp-{ref_type}-{format}-derep.qza", ref_type = REF_TYPE, format=FORMAT),
+        # "fl/rdp-fl-tax-derep.qza",
+        # "fl/rdp-fl-seqs-derep.qza",
+        expand("{ref_type}/rdp-{ref_type}-classifier.qza", ref_type = REF_TYPE),
+        expand("{ref_type}/rdp-{ref_type}-classifier.qza", ref_type = REF_TYPE)
+
+include:
+    "rules/common.smk"
+
+## get rdp data
+rule get_rdp:
+    conda: 
+        Q2CONDA
+    output:
+        seqs = "RDPClassifier_16S_trainsetNo18_QiimeFormat/RefOTUs.fa",
+	    tax =  "RDPClassifier_16S_trainsetNo18_QiimeFormat/Ref_taxonomy.txt",
+    # params:
+    #     outdir = config["outdir"]
+    log:
+        wgout = "logs/downloads-wget-log.out",
+        wgerr = "logs/downloads-wget-log.err",
+        uzout = "logs/downloads-unzip-log.out",
+        uzerr = "logs/downloads-unzip-log.err"
+    shell: 
+        """
+        wget https://sourceforge.net/projects/rdp-classifier/files/RDP_Classifier_TrainingData/RDPClassifier_16S_trainsetNo18_QiimeFormat.zip 2> {log.wgerr} 1> {log.wgout}
+
+        unzip RDPClassifier_16S_trainsetNo18_QiimeFormat.zip 2> {log.uzerr} 1> {log.uzout}
+        """
+       # wget -P {output.outdir} https://sourceforge.net/projects/rdp-classifier/files/RDP_Classifier_TrainingData/RDPClassifier_16S_trainsetNo18_QiimeFormat.zip 2> {log.wgerr} 1> {log.wgout}
+       # unzip RDPClassifier_16S_trainsetNo18_QiimeFormat.zip -d {output.outdir}/ 2> {log.uzerr} 1> {log.uzout}
+
+
+# import
+rule import_rdp_into_qiime2:
+    conda: 
+        Q2CONDA
+    input:
+        seqs = rules.get_rdp.output.seqs,
+        tax = rules.get_rdp.output.tax,
+    output:
+        seqs = "fl/rdp-fl-seqs.qza",
+        tax = "fl/rdp-fl-tax.qza"
+    log:
+        seqimpout = "logs/downloads-seqimp-log.out",
+        seqimperr = "logs/downloads-seqimp-log.err",
+        taximpout = "logs/downloads-taximp-log.out",
+        taximperr = "logs/downloads-taximp-log.err"
+    shell:
+        """
+        qiime tools import \
+            --input-path {input.seqs} \
+            --type 'FeatureData[Sequence]' \
+            --input-format 'MixedCaseDNAFASTAFormat' \
+            --output-path {output.seqs} \
+            2> {log.seqimperr} 1> {log.seqimpout}
+
+        qiime tools import \
+            --input-path {input.tax} \
+            --type 'FeatureData[Taxonomy]' \
+            --input-format 'HeaderlessTSVTaxonomyFormat' \
+            --output-path {output.tax} \
+            2> {log.taximperr} 1> {log.taximpout}
+        """
+        
+
+rule extract_amplicon_region:
+    wildcard_constraints:
+        ref_type = VREGION_CONSTRAINT
+    conda:
+        Q2CONDA 
+    input:
+        seqs = "fl/rdp-fl-seqs.qza",
+    params:
+        f_primer = get_fw_primer,
+	    r_primer = get_rev_primer,
+	    orientation = "forward"
+    threads: 
+        2
+    output:
+        extracted_seqs = "{ref_type}/rdp-{ref_type}-seqs.qza"
+    log:
+        out = "logs/extract-amp-{ref_type}-log.out",
+        err = "logs/extract-amp-{ref_type}-log.err"
+    shell:
+        """
+        qiime feature-classifier extract-reads \
+            --i-sequences {input.seqs} \
+	        --p-f-primer {params.f_primer} \
+	        --p-r-primer {params.r_primer} \
+	        --p-n-jobs {threads} \
+	        --p-read-orientation {params.orientation} \
+	        --o-reads {output.extracted_seqs} \
+            --verbose \
+            2> {log.err} 1> {log.out}
+        """
+
+
+# derep
+rule derep:
+    conda:
+        Q2CONDA
+    input:
+        seqs = "{ref_type}/rdp-{ref_type}-seqs.qza",
+	    tax =  "fl/rdp-fl-tax.qza"
+    params:
+        mode = 'uniq',
+    threads:
+        2
+    output:
+        derep_seqs = "{ref_type}/rdp-{ref_type}-seqs-derep.qza",
+	    derep_tax = "{ref_type}/rdp-{ref_type}-tax-derep.qza"
+    log:
+        out = "logs/derep-{ref_type}-log.out",
+        err = "logs/derep-{ref_type}-log.err"
+ 
+    shell:
+        """
+        qiime rescript dereplicate \
+            --i-sequences {input.seqs} \
+            --i-taxa {input.tax} \
+            --p-mode {params.mode} \
+	        --p-threads {threads} \
+            --o-dereplicated-sequences {output.derep_seqs} \
+            --o-dereplicated-taxa {output.derep_tax} \
+            --verbose \
+            2> {log.err} 1> {log.out}
+        """
+
+
+# train
+rule fl_train:
+    conda:
+        Q2CONDA
+    input:
+        seqs = "{ref_type}/rdp-{ref_type}-seqs-derep.qza",
+        tax = "{ref_type}/rdp-{ref_type}-tax-derep.qza"
+    output:
+        classifier = "{ref_type}/rdp-{ref_type}-classifier.qza"
+    log:
+        out = "logs/train-classifier-{ref_type}-log.out",
+        err = "logs/train-classifier-{ref_type}-log.err"
+    shell:
+        """
+        qiime feature-classifier fit-classifier-naive-bayes \
+            --i-reference-reads {input.seqs} \
+            --i-reference-taxonomy {input.tax} \
+            --o-classifier {output.classifier} \
+            --verbose \
+            2> {log.err} 1> {log.out}
+	    """

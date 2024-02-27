@@ -1,0 +1,26 @@
+# Files to ignore
+## SILVA
+Pipelines/SILVA/.snakemake
+Pipelines/SILVA/.snakemake/**
+Pipelines/SILVA/workflow/results
+Pipelines/SILVA/workflow/results/**
+Pipelines/SILVA/workflow/.snakemake
+Pipelines/SILVA/workflow/.snakemake/**
+## GTDB
+Pipelines/GTDB/.snakemake
+Pipelines/GTDB/.snakemake/**
+pipelines/GTDB/workflow/results
+Pipelines/GTDB/workflow/results/**
+Pipelines/GTDB/workflow/.snakemake
+Pipelines/GTDB/workflow/.snakemake/**
+## RDP
+Pipelines/RDP/.snakemake
+Pipelines/RDP/.snakemake/**
+Pipelines/RDP/workflow/results
+Pipelines/RDP/workflow/results/**
+Pipelines/RDP/workflow/.snakemake
+Pipelines/RDP/workflow/.snakemake/**
+# misc files
+.DS_Store
+*.ipynb
+.ipynb_checkpoints/**
