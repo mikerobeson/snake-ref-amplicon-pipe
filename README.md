@@ -39,7 +39,7 @@ cd Pipelines/SILVA/workflow
 **Generate DAG**
 
 ```
-snakemake --snakefile Snakefile --dag all | dot -Tpng > silva-train.png
+snakemake --snakefile Snakefile --dag all | dot -Tpng > silva-dag.png
 ```
 
 **Run pipeline**
