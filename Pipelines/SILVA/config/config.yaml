@@ -8,6 +8,20 @@ silva_opt:
     target: "SSURef_NR99"
     ranks: "domain phylum class order family genus"
 
+# cull seqs
+cull_opt:
+    ndegen: "5"
+    hpoly: "8"
+
+# seq and length filt params
+filt_seq_len_opt:
+    labels: "Archaea Bacteria Eukaryota"
+    min_lens: "900 1200 1400"
+
+# derep params
+derep:
+    mode: "uniq"
+
 # Primers
 primers:
     'v1v3':
@@ -28,6 +42,10 @@ primers:
     'v7v9':
         'fw': 'CAACGAGCGCAACCCT'
         'rev': 'TACGGYTACCTTGTTACGACTT'
+
+# Threads
+threads:
+    general: 2
 
 # output directory
 outdir: 'results'
