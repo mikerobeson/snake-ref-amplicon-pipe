@@ -38,8 +38,8 @@ rule get_rdp:
     conda: 
         Q2CONDA
     output:
-        seqs = "RDPClassifier_16S_trainsetNo18_QiimeFormat/RefOTUs.fa",
-	    tax =  "RDPClassifier_16S_trainsetNo18_QiimeFormat/Ref_taxonomy.txt",
+        seqs = "RDPClassifier_16S_trainsetNo19_QiimeFormat/RefOTUs.fa",
+	    tax =  "RDPClassifier_16S_trainsetNo19_QiimeFormat/Ref_taxonomy.txt",
     # params:
     #     outdir = config["outdir"]
     log:
