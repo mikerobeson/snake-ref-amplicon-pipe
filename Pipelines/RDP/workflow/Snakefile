@@ -49,12 +49,12 @@ rule get_rdp:
         uzerr = "logs/downloads-unzip-log.err"
     shell: 
         """
-        wget https://sourceforge.net/projects/rdp-classifier/files/RDP_Classifier_TrainingData/RDPClassifier_16S_trainsetNo18_QiimeFormat.zip 2> {log.wgerr} 1> {log.wgout}
+        wget https://sourceforge.net/projects/rdp-classifier/files/RDP_Classifier_TrainingData/RDPClassifier_16S_trainsetNo19_QiimeFormat.zip 2> {log.wgerr} 1> {log.wgout}
 
-        unzip RDPClassifier_16S_trainsetNo18_QiimeFormat.zip 2> {log.uzerr} 1> {log.uzout}
+        unzip RDPClassifier_16S_trainsetNo19_QiimeFormat.zip 2> {log.uzerr} 1> {log.uzout}
         """
-       # wget -P {output.outdir} https://sourceforge.net/projects/rdp-classifier/files/RDP_Classifier_TrainingData/RDPClassifier_16S_trainsetNo18_QiimeFormat.zip 2> {log.wgerr} 1> {log.wgout}
-       # unzip RDPClassifier_16S_trainsetNo18_QiimeFormat.zip -d {output.outdir}/ 2> {log.uzerr} 1> {log.uzout}
+       # wget -P {output.outdir} https://sourceforge.net/projects/rdp-classifier/files/RDP_Classifier_TrainingData/RDPClassifier_16S_trainsetNo19_QiimeFormat.zip 2> {log.wgerr} 1> {log.wgout}
+       # unzip RDPClassifier_16S_trainsetNo19_QiimeFormat.zip -d {output.outdir}/ 2> {log.uzerr} 1> {log.uzout}
 
 
 # import
