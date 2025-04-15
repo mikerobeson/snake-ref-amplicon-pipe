@@ -6,7 +6,7 @@ This repository is for aiding in the generation of several commonly used amplico
 - GTDB
 - RDP
 
-*Note* a Nextflow variant of this pipeline is available [here](https://github.com/mikerobeson/nf-refdb-amplicon).*
+*Note: a Nextflow variant of this pipeline is available [here](https://github.com/mikerobeson/nf-refdb-amplicon).*
 
 Each pipeline is currently setup to run intependently, and generate the following classifiers:
 
